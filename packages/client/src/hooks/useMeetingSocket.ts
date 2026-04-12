@@ -7,12 +7,14 @@ export function useMeetingSocket(meetingId: string | null) {
   const wsRef = useRef<WebSocket | null>(null)
   const accessToken = useAuthStore(s => s.accessToken)
   const {
-    setActive, addTranscript, startResponse,
+    setActive, setConnectionStatus, addTranscript, startResponse,
     appendToken, finishResponse, setError
   } = useMeetingStore()
 
   useEffect(() => {
     if (!meetingId || !accessToken) return
+
+    setConnectionStatus('connecting')
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
@@ -20,14 +22,19 @@ export function useMeetingSocket(meetingId: string | null) {
     wsRef.current = ws
 
     ws.onopen = () => {
-      console.log('[WS] Connected')
+      console.log('[WS] Connected, waiting for Deepgram...')
       setActive(true)
+      setConnectionStatus('connected')
     }
 
     ws.onmessage = (event) => {
       const message: ServerMessage = JSON.parse(event.data)
 
       switch (message.type) {
+        case 'ready':
+          console.log('[WS] Server ready — Deepgram connected')
+          setConnectionStatus('ready')
+          break
         case 'transcript':
           addTranscript({ speaker: message.speaker, text: message.text, timestamp: message.timestamp })
           break
@@ -56,17 +63,19 @@ export function useMeetingSocket(meetingId: string | null) {
     ws.onclose = () => {
       console.log('[WS] Disconnected')
       setActive(false)
+      setConnectionStatus('disconnected')
     }
 
     ws.onerror = (err) => {
       console.error('[WS] Error:', err)
+      setConnectionStatus('disconnected')
     }
 
     return () => {
       ws.close()
       wsRef.current = null
     }
-  }, [meetingId, accessToken, setActive, addTranscript, startResponse, appendToken, finishResponse, setError])
+  }, [meetingId, accessToken, setActive, setConnectionStatus, addTranscript, startResponse, appendToken, finishResponse, setError])
 
   const send = useCallback((message: ClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

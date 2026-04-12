@@ -10,7 +10,7 @@ import { ModeToolbar } from '../components/meeting/ModeToolbar'
 export function MeetingPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isActive, isRecording, setMeeting, setRecording, reset } = useMeetingStore()
+  const { isActive, isRecording, connectionStatus, setMeeting, setRecording, reset } = useMeetingStore()
   const { sendAudio, triggerMode, cancel, endMeeting } = useMeetingSocket(id || null)
 
   const onAudioChunk = useCallback((base64Data: string) => {
@@ -56,37 +56,56 @@ export function MeetingPage() {
 
   return (
     <div className="h-screen flex flex-col bg-black">
-      <header className="h-14 border-b border-neutral-800 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="h-12 border-b border-neutral-800/50 flex items-center justify-between px-5 shrink-0 bg-neutral-950/80 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-neutral-500 hover:text-white text-sm"
+            className="text-neutral-600 hover:text-neutral-300 text-xs transition-colors"
           >
             &larr; Back
           </button>
-          <h1 className="font-medium text-white">Meeting</h1>
-          {isActive && (
-            <span className="flex items-center gap-1.5 text-xs text-white">
-              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              Live
+          <div className="w-px h-4 bg-neutral-800" />
+          <h1 className="text-sm font-medium text-neutral-300">Meeting</h1>
+          {connectionStatus === 'connecting' && (
+            <span className="flex items-center gap-1.5 text-[10px] text-amber-400 font-medium">
+              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+              Connecting...
             </span>
+          )}
+          {connectionStatus === 'connected' && (
+            <span className="flex items-center gap-1.5 text-[10px] text-amber-400 font-medium">
+              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+              Initializing...
+            </span>
+          )}
+          {connectionStatus === 'ready' && (
+            <span className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              Ready
+            </span>
+          )}
+          {isCapturing && (
+            <span className="text-[10px] text-sky-400/60 font-mono">recording</span>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleRecording}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            disabled={connectionStatus !== 'ready' && !isCapturing}
+            className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all ${
               isCapturing
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 ring-1 ring-red-500/20'
+                : connectionStatus !== 'ready'
+                  ? 'bg-neutral-800/30 text-neutral-600 cursor-not-allowed'
+                  : 'bg-neutral-800/60 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
             }`}
           >
-            {isCapturing ? 'Stop Mic' : 'Start Mic'}
+            {isCapturing ? 'Stop Mic' : connectionStatus !== 'ready' ? 'Connecting...' : 'Start Mic'}
           </button>
           <button
             onClick={handleEndMeeting}
-            className="px-4 py-1.5 bg-white hover:bg-neutral-200 text-black rounded-lg text-sm font-medium transition-colors"
+            className="px-3 py-1 bg-white hover:bg-neutral-200 text-black rounded-md text-[11px] font-medium transition-colors"
           >
             End Meeting
           </button>
@@ -94,19 +113,18 @@ export function MeetingPage() {
       </header>
 
       {micError && (
-        <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm flex items-center justify-between">
+        <div className="px-5 py-2.5 bg-red-500/5 border-b border-red-500/10 text-red-400 text-xs flex items-center justify-between">
           <span>{micError}</span>
-          <button onClick={() => setMicError(null)} className="text-red-500 hover:text-red-300 ml-4">&times;</button>
+          <button onClick={() => setMicError(null)} className="text-red-500 hover:text-red-300 ml-4 text-sm">&times;</button>
         </div>
       )}
 
       <ModeToolbar onTrigger={triggerMode} onCancel={cancel} />
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-1/2 border-r border-neutral-800 overflow-auto">
+        <div className="w-1/2 border-r border-neutral-800/30 overflow-auto">
           <TranscriptPanel />
         </div>
-
         <div className="w-1/2 overflow-auto">
           <AIResponsePanel />
         </div>

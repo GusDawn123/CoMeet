@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 
-type TranscriptCallback = (text: string, isFinal: boolean) => void
+type TranscriptCallback = (text: string, isFinal: boolean, speaker: number) => void
 
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen'
 
@@ -15,13 +15,13 @@ export class DeepgramService {
   }
 
   async connect(): Promise<void> {
-    // Omit encoding/sample_rate so Deepgram auto-detects from the WebM/Opus container
     const params = new URLSearchParams({
       model: 'nova-3',
       smart_format: 'true',
       interim_results: 'true',
       utterance_end_ms: '1500',
-      vad_events: 'true'
+      vad_events: 'true',
+      diarize: 'true'
     })
 
     const url = `${DEEPGRAM_WS_URL}?${params.toString()}`
@@ -35,7 +35,7 @@ export class DeepgramService {
 
       this.ws.on('open', () => {
         clearTimeout(timeout)
-        console.log('[Deepgram] Connected')
+        console.log('[Deepgram] Connected (diarize=true)')
         resolve()
       })
 
@@ -43,10 +43,15 @@ export class DeepgramService {
         try {
           const result = JSON.parse(data.toString())
           if (result.type !== 'Results') return
-          const text = result.channel?.alternatives?.[0]?.transcript?.trim()
-          if (text) {
-            this.onTranscript(text, result.is_final)
-          }
+
+          const alt = result.channel?.alternatives?.[0]
+          const text = alt?.transcript?.trim()
+          if (!text) return
+
+          const words = alt?.words || []
+          const speakerId = words.length > 0 ? (words[0].speaker ?? 0) : 0
+
+          this.onTranscript(text, result.is_final, speakerId)
         } catch (err) {
           console.error('[Deepgram] Parse error:', (err as Error).message)
         }

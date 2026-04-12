@@ -20,29 +20,29 @@ export function ModeToolbar({ onTrigger, onCancel }: ModeToolbarProps) {
   const activeMode = useMeetingStore(s => s.activeMode)
 
   return (
-    <div className="h-12 border-b border-neutral-800 flex items-center gap-2 px-6 shrink-0 overflow-x-auto">
+    <div className="h-11 border-b border-neutral-800/50 flex items-center gap-1.5 px-5 shrink-0 overflow-x-auto bg-neutral-950/50">
       {MODES.map(({ mode, label, shortcut }) => (
         <button
           key={mode}
           onClick={() => onTrigger(mode)}
           disabled={!!activeMode}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+          className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap ${
             activeMode === mode
-              ? 'bg-white text-black'
+              ? 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30'
               : activeMode
-                ? 'bg-neutral-900 text-neutral-700 cursor-not-allowed'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                ? 'bg-transparent text-neutral-700 cursor-not-allowed'
+                : 'bg-neutral-800/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
           }`}
         >
           {label}
-          <span className="ml-1.5 text-neutral-600 text-[10px]">{shortcut}</span>
+          <span className="ml-1 text-neutral-600 text-[9px] font-mono">{shortcut}</span>
         </button>
       ))}
 
       {activeMode && (
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors ml-auto"
+          className="px-3 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-md text-[11px] font-medium transition-colors ml-auto"
         >
           Cancel
         </button>

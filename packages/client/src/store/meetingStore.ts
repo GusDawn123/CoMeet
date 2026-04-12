@@ -16,10 +16,13 @@ interface AIResponseEntry {
   isStreaming: boolean
 }
 
+type ConnectionStatus = 'connecting' | 'connected' | 'ready' | 'disconnected'
+
 interface MeetingState {
   meetingId: string | null
   isActive: boolean
   isRecording: boolean
+  connectionStatus: ConnectionStatus
   transcript: TranscriptEntry[]
   currentResponse: AIResponseEntry | null
   responses: AIResponseEntry[]
@@ -28,6 +31,7 @@ interface MeetingState {
   setMeeting: (id: string) => void
   setActive: (active: boolean) => void
   setRecording: (recording: boolean) => void
+  setConnectionStatus: (status: ConnectionStatus) => void
   addTranscript: (entry: TranscriptEntry) => void
   startResponse: (mode: AIMode) => void
   appendToken: (token: string) => void
@@ -40,6 +44,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
   meetingId: null,
   isActive: false,
   isRecording: false,
+  connectionStatus: 'disconnected' as ConnectionStatus,
   transcript: [],
   currentResponse: null,
   responses: [],
@@ -48,6 +53,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
   setMeeting: (id) => set({ meetingId: id }),
   setActive: (active) => set({ isActive: active }),
   setRecording: (recording) => set({ isRecording: recording }),
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   addTranscript: (entry) =>
     set(state => ({ transcript: [...state.transcript, entry] })),
@@ -99,6 +105,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
       meetingId: null,
       isActive: false,
       isRecording: false,
+      connectionStatus: 'disconnected' as ConnectionStatus,
       transcript: [],
       currentResponse: null,
       responses: [],

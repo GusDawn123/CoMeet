@@ -12,6 +12,8 @@ export class MeetingSessionManager {
   private meetingId: string
   private userId: string
   private ws: WebSocket
+  private audioBuffer: Buffer[] = []
+  private deepgramReady = false
 
   constructor(
     ws: WebSocket,
@@ -57,15 +59,17 @@ export class MeetingSessionManager {
     })
 
     if (keys.deepgramKey) {
-      this.deepgram = new DeepgramService(keys.deepgramKey, (text, isFinal) => {
-        this.send({ type: 'transcript', speaker: 'interviewer', text, timestamp: Date.now() })
+      this.deepgram = new DeepgramService(keys.deepgramKey, (text, isFinal, speakerId) => {
+        const speaker = speakerId === 0 ? 'user' : 'interviewer'
+        this.send({ type: 'transcript', speaker, text, timestamp: Date.now() })
 
         if (isFinal) {
           this.session.handleTranscript({
-            role: 'interviewer', text, timestamp: Date.now(), isFinal: true
+            role: speaker === 'user' ? 'user' : 'interviewer',
+            text, timestamp: Date.now(), isFinal: true
           })
           prisma.transcriptSegment.create({
-            data: { meetingId, speaker: 'interviewer', text, isFinal: true }
+            data: { meetingId, speaker, text, isFinal: true }
           }).catch(err => console.error('[Session] DB save error:', err))
         }
       })
@@ -78,16 +82,29 @@ export class MeetingSessionManager {
     if (this.deepgram) {
       try {
         await this.deepgram.connect()
+        this.deepgramReady = true
+        console.log(`[Session] Deepgram ready, flushing ${this.audioBuffer.length} buffered chunks`)
+        // Flush any audio that arrived while Deepgram was connecting
+        for (const chunk of this.audioBuffer) {
+          this.deepgram.sendAudio(chunk)
+        }
+        this.audioBuffer = []
       } catch (err) {
         console.error('[Session] Deepgram failed:', (err as Error).message)
+        this.audioBuffer = []
         this.send({ type: 'error', message: `Deepgram connection failed: ${(err as Error).message}` })
       }
     }
   }
 
   handleAudioChunk(base64Data: string): void {
-    if (!this.deepgram?.isReady()) return
+    if (!this.deepgram) return
     const buffer = Buffer.from(base64Data, 'base64')
+    if (!this.deepgramReady) {
+      // Buffer audio until Deepgram is connected
+      this.audioBuffer.push(buffer)
+      return
+    }
     this.deepgram.sendAudio(buffer)
   }
 

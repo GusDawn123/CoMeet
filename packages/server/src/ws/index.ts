@@ -65,10 +65,8 @@ export function setupWebSocket(server: Server): void {
     )
 
     activeSessions.set(meetingId, session)
-    await session.start()
 
-    console.log(`[WS] Client connected to meeting ${meetingId}`)
-
+    // Register message handler BEFORE starting Deepgram so no audio chunks are lost
     ws.on('message', async (data: Buffer) => {
       try {
         const message: ClientMessage = JSON.parse(data.toString())
@@ -92,6 +90,12 @@ export function setupWebSocket(server: Server): void {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }))
       }
     })
+
+    // Now start Deepgram connection (async) — audio will be buffered until ready
+    await session.start()
+    ws.send(JSON.stringify({ type: 'ready' }))
+
+    console.log(`[WS] Client connected to meeting ${meetingId}`)
 
     ws.on('close', () => {
       session.cleanup()

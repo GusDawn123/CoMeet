@@ -13,6 +13,7 @@ export type ServerMessage =
   | { type: 'ai_done'; mode: AIMode; intent: string | null; latencyMs: number }
   | { type: 'ai_error'; message: string }
   | { type: 'meeting_ended'; summary: string | null }
+  | { type: 'ready' }
   | { type: 'error'; message: string }
 
 export type AIMode =
